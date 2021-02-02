@@ -27,3 +27,8 @@ Do not forget to change your Lambda Function's Memory to at leats 384 mb, and th
 ------
 
 In the same archive you have a file called python/**lambda_function.py**  if you dont wanna create a Lambda Layer you can use the same archive to run your function, and this file you will find a ready to use function, ready to be uploaded unto S3 and to be trigged. Change what you want as you need.
+
+
+개발 과정 작성
+------
+https://blog.naver.com/mm9139/222228965919
