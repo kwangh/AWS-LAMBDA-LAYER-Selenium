@@ -1,18 +1,21 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
+import urllib3
+import json
+http = urllib3.PoolManager()
 
 def get_driver():
     chrome_options = Options()
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--window-size=1280x1696')
+    chrome_options.add_argument('--window-size=1200x900')
     chrome_options.add_argument('--user-data-dir=/tmp/user-data')
     chrome_options.add_argument('--hide-scrollbars')
-    chrome_options.add_argument('--enable-logging')
-    chrome_options.add_argument('--log-level=0')
-    chrome_options.add_argument('--v=99')
+    #chrome_options.add_argument('--enable-logging')
+    #chrome_options.add_argument('--log-level=0')
+    #chrome_options.add_argument('--v=99')
     chrome_options.add_argument('--single-process')
     chrome_options.add_argument('--data-path=/tmp/data-path')
     chrome_options.add_argument('--ignore-certificate-errors')
@@ -26,12 +29,14 @@ def get_driver():
     
 def lambda_handler(event, context):
     driver = get_driver()
+    # login
     driver.get('https://talk.tmaxsoft.com')
     driver.find_element_by_name('id').send_keys('kwanghun_choi')
-    driver.find_element_by_name('pass').send_keys('----')
+    driver.find_element_by_name('pass').send_keys(event['pass'])
     driver.find_element_by_id('loginPage_btn').click()
     
     driver.get('https://talk.tmaxsoft.com/front/bbs/findBoardList.do?boardKind=BBS20140826008&bbsGroupCd=TM0007&curPageBbsDiv=TOTAL&menuLevel=2&srchMenuNo=TM0007&toggleMenuNo=TM0012&')
+    page_data = ""
     try:
         is_new = driver.find_element_by_css_selector("img[src='/images/new_icon.png']")
         is_new.click()
@@ -39,6 +44,13 @@ def lambda_handler(event, context):
         page_data = driver.page_source
     except NoSuchElementException:
         page_data = "Not found!"
-    driver.close()
     
+    # slack webhook noti
+    url=event['url']
+    msg = {
+        "text": page_data,
+    }
+    encoded_msg = json.dumps(msg).encode('utf-8')
+    resp = http.request('POST',url, body=encoded_msg)
+    driver.close()
     return page_data
