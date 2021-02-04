@@ -6,51 +6,55 @@ import json
 http = urllib3.PoolManager()
 
 def get_driver():
-    chrome_options = Options()
-    chrome_options.add_argument('--headless')
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-gpu')
-    chrome_options.add_argument('--window-size=1200x900')
-    chrome_options.add_argument('--user-data-dir=/tmp/user-data')
-    chrome_options.add_argument('--hide-scrollbars')
-    #chrome_options.add_argument('--enable-logging')
-    #chrome_options.add_argument('--log-level=0')
-    #chrome_options.add_argument('--v=99')
-    chrome_options.add_argument('--single-process')
-    chrome_options.add_argument('--data-path=/tmp/data-path')
-    chrome_options.add_argument('--ignore-certificate-errors')
-    chrome_options.add_argument('--homedir=/tmp')
-    chrome_options.add_argument('--disk-cache-dir=/tmp/cache-dir')
-    chrome_options.add_argument('user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')
-    chrome_options.binary_location = "/opt/python/bin/headless-chromium"
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1200x900')
+    options.add_argument('--user-data-dir=/tmp/user-data')
+    options.add_argument('--hide-scrollbars')
+    #options.add_argument('--enable-logging')
+    #options.add_argument('--log-level=0')
+    #options.add_argument('--v=99')
+    options.add_argument('--single-process')
+    options.add_argument('--data-path=/tmp/data-path')
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--homedir=/tmp')
+    options.add_argument('--disk-cache-dir=/tmp/cache-dir')
+    options.add_argument('user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36')
+    options.binary_location = "/opt/python/bin/headless-chromium"
 
-    driver = webdriver.Chrome('/opt/python/bin/chromedriver', chrome_options=chrome_options)
+    driver = webdriver.Chrome('/opt/python/bin/chromedriver', options=options)
     return driver
     
 def lambda_handler(event, context):
     driver = get_driver()
     # login
-    driver.get('https://talk.tmaxsoft.com')
-    driver.find_element_by_name('id').send_keys('kwanghun_choi')
-    driver.find_element_by_name('pass').send_keys(event['pass'])
-    driver.find_element_by_id('loginPage_btn').click()
-    
-    driver.get('https://talk.tmaxsoft.com/front/bbs/findBoardList.do?boardKind=BBS20140826008&bbsGroupCd=TM0007&curPageBbsDiv=TOTAL&menuLevel=2&srchMenuNo=TM0007&toggleMenuNo=TM0012&')
-    page_data = ""
+    driver.get('https://tmax.ezwel.com/cuser/login/loginForm.ez?clientCd=tmax')
+    driver.find_element_by_id('loginSearchBean_userId').send_keys('2017119')
+    driver.find_element_by_id('loginSearchBean_password1').send_keys(event['pass'])
     try:
-        is_new = driver.find_element_by_css_selector("img[src='/images/new_icon.png']")
-        is_new.click()
-        src=driver.find_element_by_xpath("//*[contains(@src,'https://talk.tmaxsoft.com/upload/editor/x/')]").get_attribute('src')
-        page_data = driver.page_source
+        driver.find_element_by_class_name('lgn_ip_lgn').click() 
     except NoSuchElementException:
-        page_data = "Not found!"
+        pass
+
+    driver.get('http://tmax.ezwel.com/family/anniversaryGiftMain_defer.ez?prmCd=10029285')
+    cont_txt_elements = driver.find_elements_by_class_name('cont_txt')
+    res = ""
+    for element in cont_txt_elements:
+        if "PTFE" in element.text:
+            if "품절" in element.text:
+                res = "Sold out"
+            else:
+                res = "Available"
+            break
     
     # slack webhook noti
     url=event['url']
     msg = {
-        "text": page_data,
+        "text": res,
     }
     encoded_msg = json.dumps(msg).encode('utf-8')
     resp = http.request('POST',url, body=encoded_msg)
     driver.close()
-    return page_data
+    return res
